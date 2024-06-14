@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Http\Helpers\Cart;
+use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 
 class CheckoutController extends Controller
@@ -10,6 +14,8 @@ class CheckoutController extends Controller
   // Payment Start from Here
   public function checkout(Request $request)
   {
+    // Grap USER
+    $user = $request->user() ;
 
     $key = 'sk_test_51PQ79nK5dXjrsTGrvnNimynzkzUCSrh6gPaxqLLQCGNvMAOaGlb5oBTYq85fJIeFBzztNG1zaToIUd69A0BDrOQ100DmAtQt3V';
     // $stripe = new \Stripe\StripeClient('sk_test_51PQ79nK5dXjrsTGrvnNimynzkzUCSrh6gPaxqLLQCGNvMAOaGlb5oBTYq85fJIeFBzztNG1zaToIUd69A0BDrOQ100DmAtQt3V');
@@ -17,8 +23,10 @@ class CheckoutController extends Controller
 
     [$products, $cartItems] = Cart::getProductsAndCartItems();
     $lineItems = [];
-
+    $totlaPrice = 0 ;
     foreach ($products as $product) {
+      $quantity = $cartItems[$product->id]['quantity'] ;
+      $totlaPrice += $product->price * $quantity ;
       $lineItems[] = [
 
         'price_data' => [
@@ -28,7 +36,7 @@ class CheckoutController extends Controller
           ],
           'unit_amount_decimal' => $product->price * 100,
         ],
-        'quantity' => $cartItems[$product->id]['quantity'],
+        'quantity' => $quantity,
       ];
     }
 
@@ -39,6 +47,28 @@ class CheckoutController extends Controller
       'cancel_url' => route('checkout.failure', [], true),
       'customer_creation' => 'always',
     ]);
+
+    // ORDER
+    $orderData = [
+      'total_price' => $totlaPrice ,
+      'status' => OrderStatus::Unpaid ,
+      'created_by' => $user->id ,
+      'updated_by' => $user->id ,
+    ];
+
+    $order = Order::create($orderData);
+
+    // PAYMENT TABLE
+    $paymentData = [
+      'order_id' => $order->id ,
+      'amount' => $totlaPrice ,
+      'status' => PaymentStatus::Pending,
+      'type' => 'cc',
+      'created_by' => $user->id ,
+      'updated_by' => $user->id ,
+      'session_id' => $session->id
+    ];
+    $payment = Payment::create($paymentData) ;
 
     return redirect($session->url);
   }
@@ -51,6 +81,21 @@ class CheckoutController extends Controller
       if (!$session) {
         return view('checkout.failure') ;
       }
+
+      $payment = Payment::query()->where(['session_id' =>$session->id, 'status' => PaymentStatus::Pending ])->first();
+      
+      if (!$payment) {
+        return view('checkout.failure') ;
+      }
+
+      $payment->status = PaymentStatus::Paid ;
+      $payment->update() ;
+
+      $order = $payment->order ;
+
+      $order->status = OrderStatus::Paid ;
+      $order->update() ;
+
       $customer = $stripe->customers->retrieve($session->customer);
       return view('checkout.success', compact('customer'));
 
