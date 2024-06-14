@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Helpers\Cart;
+use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Http\Request;
@@ -74,18 +75,21 @@ class CheckoutController extends Controller
   }
   public function success(Request $request)
   {
+    // Grap USER to use delete cart item
+    $user = $request->user() ;
+
     $stripe = new \Stripe\StripeClient('sk_test_51PQ79nK5dXjrsTGrvnNimynzkzUCSrh6gPaxqLLQCGNvMAOaGlb5oBTYq85fJIeFBzztNG1zaToIUd69A0BDrOQ100DmAtQt3V');
     // \Stripe\Stripe::setApiKey('sk_test_51PQ79nK5dXjrsTGrvnNimynzkzUCSrh6gPaxqLLQCGNvMAOaGlb5oBTYq85fJIeFBzztNG1zaToIUd69A0BDrOQ100DmAtQt3V');
     try {
       $session = $stripe->checkout->sessions->retrieve($request->get('session_id'));
       if (!$session) {
-        return view('checkout.failure') ;
+        return view('checkout.failure', ['message' => 'Invalid Session ID']) ;
       }
 
       $payment = Payment::query()->where(['session_id' =>$session->id, 'status' => PaymentStatus::Pending ])->first();
       
       if (!$payment) {
-        return view('checkout.failure') ;
+        return view('checkout.failure', ['message' => 'Payment Does not Exist']) ;
       }
 
       $payment->status = PaymentStatus::Paid ;
@@ -96,11 +100,14 @@ class CheckoutController extends Controller
       $order->status = OrderStatus::Paid ;
       $order->update() ;
 
+      // Delete Cart Item 
+      CartItem::where(['user_id' => $user->id])->delete();
+
       $customer = $stripe->customers->retrieve($session->customer);
       return view('checkout.success', compact('customer'));
 
     } catch (\Exception $e) {
-      return view('checkout.failure') ;
+      return view('checkout.failure', ['message' => $e->getMessage()]) ;
     }
 
   }
