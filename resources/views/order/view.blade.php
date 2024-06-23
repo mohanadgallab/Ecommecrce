@@ -1,152 +1,81 @@
 <x-app-layout>
-    <div  x-data="productItem({{ json_encode([
-                    'id' => $product->id,
-                    'slug' => $product->slug,
-                    'image' => $product->image,
-                    'title' => $product->title,
-                    'price' => $product->price,
-                    'addToCartUrl' => route('cart.add', $product)
-                ]) }})" class="container mx-auto">
-        <div class="grid gap-6 grid-cols-1 lg:grid-cols-5">
-            <div class="lg:col-span-3">
-                <div
-                    x-data="{
-                      images: ['{{$product->image}}'],
-                      activeImage: null,
-                      prev() {
-                          let index = this.images.indexOf(this.activeImage);
-                          if (index === 0)
-                              index = this.images.length;
-                          this.activeImage = this.images[index - 1];
-                      },
-                      next() {
-                          let index = this.images.indexOf(this.activeImage);
-                          if (index === this.images.length - 1)
-                              index = -1;
-                          this.activeImage = this.images[index + 1];
-                      },
-                      init() {
-                          this.activeImage = this.images.length > 0 ? this.images[0] : null
-                      }
-                    }"
-                >
-                    <div class="relative">
-                        <template x-for="image in images">
-                            <div
-                                x-show="activeImage === image"
-                                class="aspect-w-3 aspect-h-2"
-                            >
-                                <img :src="image" alt="" class="w-auto mx-auto"/>
-                            </div>
-                        </template>
-                        <a
-                            @click.prevent="prev"
-                            class="cursor-pointer bg-black/30 text-white absolute left-0 top-1/2 -translate-y-1/2"
+    <div class="container mx-auto lg:w-2/3 p-5">
+        <h1 class="text-3xl font-bold mb-2">Order #{{$order->id}}</h1>
+        <div class="bg-white rounded-lg p-3">
+            <table>
+                <tbody>
+                <tr>
+                    <td class="font-bold py-1 px-2">Order #</td>
+                    <td>{{$order->id}}</td>
+                </tr>
+                <tr>
+                    <td class="font-bold py-1 px-2">Order Date</td>
+                    <td>{{$order->created_at}}</td>
+                </tr>
+                <tr>
+                    <td class="font-bold py-1 px-2">Order Status</td>
+                    <td>
+                        <span
+                            class="text-white py-1 px-2 rounded {{$order->isPaid() ? 'bg-emerald-500' : 'bg-gray-400'}}">
+                            {{$order->status}}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="font-bold py-1 px-2">SubTotal</td>
+                    <td>${{ $order->total_price }}</td>
+                </tr>
+                </tbody>
+            </table>
+
+            <hr class="my-5"/>
+
+            @foreach($order->items()->with('product')->get() as $item)
+                <!-- Order Item -->
+                <div class="flex flex-col sm:flex-row items-center  gap-4">
+                    <a href="{{ route('product.view', $item->product) }}"
+                       class="w-36 h-32 flex items-center justify-center overflow-hidden">
+                        <img src="{{$item->product->image}}" class="object-cover" alt=""/>
+                    </a>
+                    <div class="flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <h3>
+                                {{$item->product->title}}
+                            </h3>
+                        </div>
+                        <div class="flex justify-between items-center w-full">
+                            <div class="flex items-center">Qty: {{$item->quantity}}</div>
+                            <span class="text-lg font-semibold"> ${{$item->unit_price}} </span>
+                        </div>
+                    </div>
+                </div>
+                <!--/ Order Item -->
+                <hr class="my-3"/>
+            @endforeach
+
+            @if (!$order->isPaid())
+                <form action="{{ route('cart.checkout-order', $order) }}"
+                      method="POST">
+                    @csrf
+                    <button class="btn-primary flex items-center justify-center w-full mt-3">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
                         >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-10 w-10"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M15 19l-7-7 7-7"
-                                />
-                            </svg>
-                        </a>
-                        <a
-                            @click.prevent="next"
-                            class="cursor-pointer bg-black/30 text-white absolute right-0 top-1/2 -translate-y-1/2"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-10 w-10"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M9 5l7 7-7 7"
-                                />
-                            </svg>
-                        </a>
-                    </div>
-                    <div class="flex">
-                        <template x-for="image in images">
-                            <a
-                                @click.prevent="activeImage = image"
-                                class="cursor-pointer w-[80px] h-[80px] border border-gray-300 hover:border-purple-500 flex items-center justify-center"
-                                :class="{'border-purple-600': activeImage === image}"
-                            >
-                                <img :src="image" alt="" class="w-auto max-auto max-h-full"/>
-                            </a>
-                        </template>
-                    </div>
-                </div>
-            </div>
-            <div class="lg:col-span-2">
-                <h1 class="text-lg font-semibold">
-                    {{$product->title}}
-                </h1>
-                <div class="text-xl font-bold mb-6">${{$product->price}}</div>
-                <div class="flex items-center justify-between mb-5">
-                    <label for="quantity" class="block font-bold mr-4">
-                        Quantity
-                    </label>
-                    <input
-                        type="number"
-                        name="quantity"
-                        x-ref="quantityEl"
-                        value="1"
-                        min="1"
-                        class="w-32 focus:border-purple-500 focus:outline-none rounded"
-                    />
-                </div>
-                <button
-                    @click="addToCart($refs.quantityEl.value)"
-                    class="btn-primary py-4 text-lg flex justify-center min-w-0 w-full mb-6"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-6 w-6 mr-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                        />
-                    </svg>
-                    Add to Cart
-                </button>
-                <div class="mb-6" x-data="{expanded: false}">
-                    <div
-                        x-show="expanded"
-                        x-collapse.min.120px
-                        class="text-gray-500 wysiwyg-content"
-                    >
-                        {{ $product->description }}
-                    </div>
-                    <p class="text-right">
-                        <a
-                            @click="expanded = !expanded"
-                            href="javascript:void(0)"
-                            class="text-purple-500 hover:text-purple-700"
-                            x-text="expanded ? 'Read Less' : 'Read More'"
-                        ></a>
-                    </p>
-                </div>
-            </div>
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                            />
+                        </svg>
+                        Make a Payment
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
 </x-app-layout>

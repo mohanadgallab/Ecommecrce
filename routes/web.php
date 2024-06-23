@@ -31,7 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
    // Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     //Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/orders',[OrderController::class , 'index'])->name('order.index');
-    Route::get('/orders/view/{order}',[OrderController::class , 'view'])->name('order.view');
+    Route::get('/orders/{order}',[OrderController::class , 'view'])->name('order.view');
 });
 
 Route::post('/webhook/stripe', [CheckoutController::class, 'webhook']);
