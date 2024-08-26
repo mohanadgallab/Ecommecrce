@@ -12,7 +12,11 @@ class CustomerAddress extends Model
 
     protected $fillable = ['type', 'address1', 'address2', 'city', 'state', 'country_code', 'zipcode', 'customer_id'];
 
-    public function customer(): HasOne {
-        return $this->hasOne(Customer::class, 'user_id', 'customer_id');
+    public function customer() {
+        return $this->hasOne(Customer::class, 'user_id', 'customer_id');  //Updating 13-Aug-2024
+    }
+
+    public function country() {
+        return $this->belongsTo(Country::class, 'country_code');
     }
 }

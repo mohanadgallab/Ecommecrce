@@ -1,3 +1,6 @@
+
+
+## Customer Profile Management Section 
 # modify customer id which is primary  to user_id download doctrine/dbal
 - composer require doctrine/dbal
 - - php artisan make:migration rename_customer_id_into_user_id
