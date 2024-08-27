@@ -14,7 +14,7 @@
             display: none !important;
         }
     </style>
-@laravelPWA
+{{-- @laravelPWA --}}
 </head>
 <body>
 @include('layouts.navigation')
